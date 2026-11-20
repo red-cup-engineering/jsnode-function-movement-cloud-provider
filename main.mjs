@@ -27,10 +27,10 @@ export const verifyProductionSignature = async (request, body, nowMs) => {
 };
 
 function response(status, value) { return new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } }); }
-function rejection(status, error, message) { return response(status, { contract: CONTRACT, error, message }); }
+function refusal(status, error, message) { return response(status, { contract: CONTRACT, error, message }); }
 function stringField(record, name, maxBytes) {
-  if (typeof record[name] !== "string" || !record[name]) return rejection(400, "invalid-fields", `${name} must be a non-empty string`);
-  if (encoder.encode(record[name]).byteLength > maxBytes) return rejection(413, "field-too-large", `${name} exceeds ${maxBytes} UTF-8 bytes`);
+  if (typeof record[name] !== "string" || !record[name]) return refusal(400, "invalid-fields", `${name} must be a non-empty string`);
+  if (encoder.encode(record[name]).byteLength > maxBytes) return refusal(413, "field-too-large", `${name} exceeds ${maxBytes} UTF-8 bytes`);
   return record[name];
 }
 
@@ -44,14 +44,14 @@ export async function materializeMovement(input) {
 }
 
 function parse(body) {
-  let source; try { source = decoder.decode(body); } catch { return rejection(400, "invalid-json", "body must be canonical UTF-8 JSON"); }
-  let value; try { value = JSON.parse(source); } catch { return rejection(400, "invalid-json", "body must be canonical UTF-8 JSON"); }
-  if (!value || typeof value !== "object" || Array.isArray(value) || JSON.stringify(value) !== source) return rejection(400, "noncanonical-json", "body must be canonical JSON");
+  let source; try { source = decoder.decode(body); } catch { return refusal(400, "invalid-json", "body must be canonical UTF-8 JSON"); }
+  let value; try { value = JSON.parse(source); } catch { return refusal(400, "invalid-json", "body must be canonical UTF-8 JSON"); }
+  if (!value || typeof value !== "object" || Array.isArray(value) || JSON.stringify(value) !== source) return refusal(400, "noncanonical-json", "body must be canonical JSON");
   const record = value, fields = ["sourceText", "targetText", "functionName", "functionSource", "targetMarker"];
-  if (Object.keys(record).length !== fields.length || fields.some((field) => !(field in record))) return rejection(400, "invalid-fields", "exact movement fields are required");
+  if (Object.keys(record).length !== fields.length || fields.some((field) => !(field in record))) return refusal(400, "invalid-fields", "exact movement fields are required");
   const parsed = {};
   for (const field of fields) { const result = stringField(record, field, field.includes("Text") ? MAX_SOURCE_BYTES : MAX_FUNCTION_BYTES); if (result instanceof Response) return result; parsed[field] = result; }
-  if (parsed.sourceText === parsed.targetText) return rejection(400, "same-source-target", "source and target bytes must be distinct");
+  if (parsed.sourceText === parsed.targetText) return refusal(400, "same-source-target", "source and target bytes must be distinct");
   return parsed;
 }
 
@@ -59,13 +59,13 @@ export function createHandler({ verifySignature = verifyProductionSignature, now
   return async (request) => {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health" && !url.search) return response(200, { contract: CONTRACT, state: "ephemeral", status: "ready", persisted: false });
-    if (request.method !== "POST" || url.pathname !== "/v1/prepare-function-movement" || url.search) return rejection(404, "not-found", "operation does not exist");
+    if (request.method !== "POST" || url.pathname !== "/v1/prepare-function-movement" || url.search) return refusal(404, "not-found", "operation does not exist");
     const body = new Uint8Array(await request.arrayBuffer()), length = Number(request.headers.get("content-length") ?? "-1");
-    if (body.byteLength > MAX_BODY_BYTES || length !== body.byteLength) return rejection(413, "body-too-large", "body length is outside the admitted bound");
-    if ((request.headers.get("content-type") ?? "").split(";", 1)[0].trim() !== "application/json") return rejection(415, "unsupported-media-type", "Content-Type must be application/json");
-    if (!await verifySignature(request, body, now())) return rejection(401, "invalid-signature", "a recent valid Union signature is required");
+    if (body.byteLength > MAX_BODY_BYTES || length !== body.byteLength) return refusal(413, "body-too-large", "body length is outside the admitted bound");
+    if ((request.headers.get("content-type") ?? "").split(";", 1)[0].trim() !== "application/json") return refusal(415, "unsupported-media-type", "Content-Type must be application/json");
+    if (!await verifySignature(request, body, now())) return refusal(401, "invalid-signature", "a recent valid Union signature is required");
     const parsed = parse(body); if (parsed instanceof Response) return parsed;
-    try { return response(200, await materializeMovement(parsed)); } catch (error) { return rejection(422, "movement-refused", error instanceof Error ? error.message : String(error)); }
+    try { return response(200, await materializeMovement(parsed)); } catch (error) { return refusal(422, "movement-refused", error instanceof Error ? error.message : String(error)); }
   };
 }
 
