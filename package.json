@@ -1,0 +1,14 @@
+{
+  "name": "@red-cup-engineering/jsnode-function-movement-cloud-provider",
+  "version": "0.1.3-dev.0",
+  "description": "Ephemeral Deno edge provider for deterministic JavaScript function movement; no customer bytes are persisted.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/red-cup-engineering/jsnode-function-movement-cloud-provider.git"
+  },
+  "license": "MIT",
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/561-group/.github/blob/main/TIPS.md"
+  }
+}
