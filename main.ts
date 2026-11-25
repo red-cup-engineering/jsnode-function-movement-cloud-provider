@@ -10,7 +10,7 @@ const decoder = new TextDecoder("utf-8", { fatal: true });
 export type SignatureVerifier = (request: Request, body: Uint8Array, nowMs: number) => Promise<boolean>;
 
 function hex(bytes: ArrayBuffer | Uint8Array): string { const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes); return [...view].map((byte) => byte.toString(16).padStart(2, "0")).join(""); }
-async function digest(text: string): Promise<string> { return `sha256:${hex(await crypto.subtle.digest("SHA-256", encoder.encode(text)))}`; }
+async function deployedWorkerSha256(text: string): Promise<string> { return `sha256:${hex(await crypto.subtle.digest("SHA-256", encoder.encode(text)))}`; }
 async function bodyDigest(body: Uint8Array): Promise<string> { return hex(await crypto.subtle.digest("SHA-256", new Uint8Array(body).buffer as ArrayBuffer)); }
 
 export async function signatureMessage(request: Request, body: Uint8Array, timestamp: string): Promise<Uint8Array> {
@@ -42,7 +42,7 @@ export async function materializeMovement(input: { sourceText: string; targetTex
   if (!new RegExp(`\\b${input.functionName.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\b`).test(input.functionSource)) throw new Error("function source does not contain function name");
   const sourceText = input.sourceText.replace(input.functionSource, "");
   const targetText = input.targetText.replace(input.targetMarker, `${input.targetMarker}\n\n${input.functionSource}`);
-  return { contract: CONTRACT, sourceText, targetText, sourceDigest: await digest(sourceText), targetDigest: await digest(targetText), providerWorkspace: "ephemeral", persisted: false };
+  return { contract: CONTRACT, sourceText, targetText, sourceDigest: await deployedWorkerSha256(sourceText), targetDigest: await deployedWorkerSha256(targetText), providerWorkspace: "ephemeral", persisted: false };
 }
 
 function parse(body: Uint8Array): Record<string, string> | Response {

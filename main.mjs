@@ -8,7 +8,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
 function hex(bytes) { const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes); return [...view].map((byte) => byte.toString(16).padStart(2, "0")).join(""); }
-async function digest(text) { return `sha256:${hex(await crypto.subtle.digest("SHA-256", encoder.encode(text)))}`; }
+async function deployedWorkerSha256(text) { return `sha256:${hex(await crypto.subtle.digest("SHA-256", encoder.encode(text)))}`; }
 async function bodyDigest(body) { return hex(await crypto.subtle.digest("SHA-256", new Uint8Array(body).buffer)); }
 
 export async function signatureMessage(request, body, timestamp) {
@@ -40,7 +40,7 @@ export async function materializeMovement(input) {
   if (!new RegExp(`\\b${input.functionName.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\b`).test(input.functionSource)) throw new Error("function source does not contain function name");
   const sourceText = input.sourceText.replace(input.functionSource, "");
   const targetText = input.targetText.replace(input.targetMarker, `${input.targetMarker}\n\n${input.functionSource}`);
-  return { contract: CONTRACT, sourceText, targetText, sourceDigest: await digest(sourceText), targetDigest: await digest(targetText), providerWorkspace: "ephemeral", persisted: false };
+  return { contract: CONTRACT, sourceText, targetText, sourceDigest: await deployedWorkerSha256(sourceText), targetDigest: await deployedWorkerSha256(targetText), providerWorkspace: "ephemeral", persisted: false };
 }
 
 function parse(body) {
